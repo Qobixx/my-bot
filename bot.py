@@ -1,10 +1,15 @@
 import discord
 from discord.ext import commands
 from discord.ui import Button, View, Modal, TextInput
+import os
+from dotenv import load_dotenv
 
-# Direkt hier eintragen
-TOKEN = "DEIN_BOT_TOKEN_HIER"
-FORUM_CHANNEL_ID = 1468258804226330764 # Forum-Channel ID
+# .env-Datei laden und Token holen
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Direkt im Code
+FORUM_CHANNEL_ID = 1468258804226330764  # Forum-Channel ID
 TAG_ID_OPENED = 1468259772339065071     # Tag-ID für "opened"
 
 intents = discord.Intents.default()
@@ -50,23 +55,4 @@ class SuggestionModal(Modal):
 class SuggestionView(View):
     @discord.ui.button(label="Suggest", style=discord.ButtonStyle.primary)
     async def suggest_button(self, interaction: discord.Interaction, button: Button):
-        forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
-        if forum_channel is None:
-            await interaction.response.send_message("Forum-Channel nicht gefunden!", ephemeral=True)
-            return
-
-        modal = SuggestionModal(forum_channel)
-        await interaction.response.send_modal(modal)
-
-
-@bot.event
-async def on_ready():
-    print(f"Eingeloggt als {bot.user}")
-
-
-@bot.command()
-async def button_suggest(ctx):
-    await ctx.send("Klicke den Button, um eine Suggestion zu erstellen:", view=SuggestionView())
-
-
-bot.run(TOKEN)
+        forum_channel = bot.get_channel
