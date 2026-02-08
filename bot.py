@@ -1,72 +1,72 @@
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
-import os
+from discord.ui import Button, View, Modal, TextInput
 
-# .env-Datei laden
-load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
-
-# Hier deine Forum-Channel-ID einfügen
-FORUM_CHANNEL_ID = 1468258804226330764  # <--- ersetzen
-# Vordefinierte Tags
-FORUM_TAGS = ["Open"]
+# Direkt hier eintragen
+TOKEN = "DEIN_BOT_TOKEN_HIER"
+FORUM_CHANNEL_ID = 1468258804226330764 # Forum-Channel ID
+TAG_ID_OPENED = 1468259772339065071     # Tag-ID für "opened"
 
 intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="$", intents=intents)
 
-# ---------------- Modal für Suggestion ----------------
-class SuggestionModal(discord.ui.Modal, title="Neue Suggestion"):
-    title_input = discord.ui.TextInput(label="Titel", placeholder="Gib hier den Titel ein", max_length=100)
-    description_input = discord.ui.TextInput(label="Beschreibung", style=discord.TextStyle.paragraph, placeholder="Beschreibe deine Suggestion hier...")
-    image_url_input = discord.ui.TextInput(label="Bild URL (optional)", required=False, placeholder="https://...")
 
-    def __init__(self, forum_channel: discord.ForumChannel):
-        super().__init__()
+class SuggestionModal(Modal):
+    def __init__(self, forum_channel):
+        super().__init__(title="Neue Suggestion")
         self.forum_channel = forum_channel
 
+        self.title_input = TextInput(label="Titel", placeholder="Titel der Suggestion")
+        self.description_input = TextInput(
+            label="Beschreibung", style=discord.TextStyle.paragraph, placeholder="Beschreibung eingeben"
+        )
+        self.image_url_input = TextInput(label="Bild-URL", required=False, placeholder="Optional: Bild-URL")
+
+        self.add_item(self.title_input)
+        self.add_item(self.description_input)
+        self.add_item(self.image_url_input)
+
     async def on_submit(self, interaction: discord.Interaction):
-        # Erstelle Embed
-        embed = discord.Embed(title=self.title_input.value, description=self.description_input.value, color=discord.Color.blue())
+        embed = discord.Embed(
+            title=self.title_input.value,
+            description=self.description_input.value,
+            color=discord.Color.blue()
+        )
         if self.image_url_input.value:
             embed.set_image(url=self.image_url_input.value)
 
-        # Poste in Forum Channel
-        await self.forum_channel.create_post(
+        # Forum-Post erstellen
+        post = await self.forum_channel.create_post(
             name=self.title_input.value,
-            content=self.description_input.value,
             embed=embed,
-            tags=FORUM_TAGS
+            applied_tags=[TAG_ID_OPENED]  # Tag automatisch setzen
         )
 
         await interaction.response.send_message("Deine Suggestion wurde gepostet!", ephemeral=True)
 
-# ---------------- Button View ----------------
-class SuggestionView(discord.ui.View):
-    def __init__(self, forum_channel: discord.ForumChannel):
-        super().__init__()
-        self.forum_channel = forum_channel
 
-    @discord.ui.button(label="Erstelle Suggestion", style=discord.ButtonStyle.primary)
-    async def suggestion_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        modal = SuggestionModal(self.forum_channel)
+class SuggestionView(View):
+    @discord.ui.button(label="Suggest", style=discord.ButtonStyle.primary)
+    async def suggest_button(self, interaction: discord.Interaction, button: Button):
+        forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
+        if forum_channel is None:
+            await interaction.response.send_message("Forum-Channel nicht gefunden!", ephemeral=True)
+            return
+
+        modal = SuggestionModal(forum_channel)
         await interaction.response.send_modal(modal)
 
-# ---------------- Events & Commands ----------------
+
 @bot.event
 async def on_ready():
     print(f"Eingeloggt als {bot.user}")
 
+
 @bot.command()
 async def button_suggest(ctx):
-    forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
-    if not isinstance(forum_channel, discord.ForumChannel):
-        await ctx.send("Fehler: Der Channel ist kein Forum-Channel!")
-        return
+    await ctx.send("Klicke den Button, um eine Suggestion zu erstellen:", view=SuggestionView())
 
-    view = SuggestionView(forum_channel)
-    await ctx.send("Klicke auf den Button, um eine Suggestion zu erstellen:", view=view)
 
 bot.run(TOKEN)
